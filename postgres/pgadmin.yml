@@ -1,0 +1,94 @@
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: pgadmin
+  namespace: vertwave
+  labels:
+    app: pgadmin
+  annotations:
+    volume.alpha.kubernetes.io/storage-class: default
+spec:
+  accessModes:
+    - "ReadWriteOnce"
+  resources:
+    requests:
+      storage: "4Gi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pgadmin
+  namespace: vertwave
+  labels:
+    app: pgadmin
+spec:
+  type: NodePort
+  ports:
+    - port: 80
+      nodePort: 30405
+  selector:
+    app: pgadmin
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pgadmin
+  namespace: vertwave
+  labels:
+    app: pgadmin
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pgadmin
+  template:
+    metadata:
+      labels:
+        app: pgadmin
+    spec:
+      containers:
+        - name: pgadmin
+          image: "dpage/pgadmin4"
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - configMapRef:
+                name: pgadmin
+          env:
+            - name: PGADMIN_DEFAULT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: pgadmin
+                  key: pgadmin-password
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+            - name: https
+              containerPort: 443
+              protocol: TCP
+          volumeMounts:
+            - name: pgadmin-data
+              mountPath: /var/lib/pgadmin
+      volumes:
+        - name: pgadmin-data
+          persistentVolumeClaim:
+            claimName: pgadmin
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pgadmin
+  namespace: vertwave
+data:
+  PGADMIN_DEFAULT_EMAIL: user@domain.com
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: pgadmin
+  namespace: vertwave
+  labels:
+    app: pgadmin
+type: Opaque
+data:
+  pgadmin-password: "a2lzcGhw" # kisphp

@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: pgsql
+  namespace: vertwave
+spec:
+  serviceName: pgsql-service
+  selector:
+    matchLabels:
+      app: pgsql
+  replicas: 1  
+  template:
+    metadata:
+      labels:
+        app: pgsql
+    spec:
+      terminationGracePeriodSeconds: 10
+      containers:
+      - name: pgsql
+        image: postgres:latest
+        volumeMounts:
+        - name: postgres-data 
+          mountPath: /var/lib/postgresql/data
+          subPath: pgdata
+        ports:
+        - containerPort: 5432 
+        env:
+          - name: POSTGRES_USER
+            value: vertwave     
+          - name: POSTGRES_PASSWORD
+            value: Pa55w0rd!
+          - name: POSTGRES_DB
+            value: product_db
+          - name: PGDATA
+            value: /var/lib/postgresql/data/pgdata        
+  volumeClaimTemplates:
+    - metadata:
+         name: postgres-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 5Gi
+            
+---               
+apiVersion: v1
+kind: Service
+metadata:
+  name: pgsql-service
+  namespace: vertwave
+spec:
+  selector:
+    app: pgsql
+  ports:
+    - protocol: TCP
+      port: 5432
+      targetPort: 5432
+      nodePort: 30432
+  type: NodePort
